@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "name": "send_otp to new phone",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "send_otp", "phone": "+79991234567"},
+      "expectedStatus": 200,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "verify_otp new user needs name",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "verify_otp", "phone": "+79991234567", "otp": "1234"},
+      "expectedStatus": 200,
+      "expectedBody": {"need_name": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "verify_otp register new user",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "verify_otp", "phone": "+79991234567", "otp": "1234", "name": "Тест Юзер"},
+      "expectedStatus": 200,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "verify_otp wrong code",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "verify_otp", "phone": "+79991234567", "otp": "9999"},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

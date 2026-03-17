@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 
 const API = "https://functions.poehali.dev/eb00ad07-0b4d-4ba7-bbb8-d759cec2c379";
-const ME = 1;
 
 interface Chat {
   id: number;
@@ -49,9 +48,23 @@ function fmtTime(iso: string) {
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+interface User {
+  id: number;
+  name: string;
+  username: string;
+  avatar: string;
+  color: string;
+}
+
+interface IndexProps {
+  user: User;
+  sessionId: string;
+  onLogout: () => void;
+}
+
 type Tab = "chats" | "contacts" | "notifications" | "search" | "settings";
 
-export default function Index() {
+export default function Index({ user, onLogout }: IndexProps) {
   const [activeTab, setActiveTab] = useState<Tab>("chats");
   const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState("");
@@ -70,7 +83,7 @@ export default function Index() {
   const unreadNotifs = NOTIFICATIONS.filter(n => !n.read).length;
 
   useEffect(() => {
-    fetch(`${API}/?action=chats&user_id=${ME}`)
+    fetch(`${API}/?action=chats&user_id=${user.id}`)
       .then(r => r.json())
       .then((data: Chat[]) => {
         setChats(data);
@@ -78,22 +91,22 @@ export default function Index() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
     if (!activeChat) return;
-    fetch(`${API}/?action=messages&chat_id=${activeChat}&user_id=${ME}`)
+    fetch(`${API}/?action=messages&chat_id=${activeChat}&user_id=${user.id}`)
       .then(r => r.json())
       .then((data: Message[]) => setMessages(data));
-  }, [activeChat]);
+  }, [activeChat, user.id]);
 
   useEffect(() => {
     if (activeTab === "contacts" && contacts.length === 0) {
-      fetch(`${API}/?action=contacts&user_id=${ME}`)
+      fetch(`${API}/?action=contacts&user_id=${user.id}`)
         .then(r => r.json())
         .then((data: Contact[]) => setContacts(data));
     }
-  }, [activeTab]);
+  }, [activeTab, user.id, contacts.length]);
 
   useEffect(() => {
     msgsEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -107,7 +120,7 @@ export default function Index() {
     const res = await fetch(`${API}/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: activeChat, sender_id: ME, text }),
+      body: JSON.stringify({ chat_id: activeChat, sender_id: user.id, text }),
     });
     const msg: Message = await res.json();
     setMessages(prev => [...prev, msg]);
@@ -154,9 +167,16 @@ export default function Index() {
             ) : null}
           </button>
         ))}
-        <div className="mt-auto">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform">
-            ВЫ
+        <div className="mt-auto flex flex-col items-center gap-2">
+          <button
+            onClick={onLogout}
+            title="Выйти"
+            className="w-9 h-9 rounded-xl hover:bg-white/8 flex items-center justify-center transition-colors group"
+          >
+            <Icon name="LogOut" size={16} className="text-white/30 group-hover:text-red-400 transition-colors" />
+          </button>
+          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${user.color} flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform`} title={user.name}>
+            {user.avatar}
           </div>
         </div>
       </aside>
@@ -447,7 +467,7 @@ export default function Index() {
             <div className="w-20 h-20 rounded-3xl btn-gradient flex items-center justify-center mb-6 neon-glow animate-float">
               <span className="text-white font-bold text-3xl" style={{ fontFamily: "Golos Text" }}>N</span>
             </div>
-            <h1 className="font-bold text-2xl grad-text mb-2" style={{ fontFamily: "Golos Text" }}>Добро пожаловать в Nex</h1>
+            <h1 className="font-bold text-2xl grad-text mb-1" style={{ fontFamily: "Golos Text" }}>Привет, {user.name.split(" ")[0]}!</h1>
             <p className="text-white/35 text-sm">Выберите чат, чтобы начать общение</p>
             <div className="mt-4 flex items-center gap-2 encrypt-badge">
               <Icon name="Lock" size={10} />

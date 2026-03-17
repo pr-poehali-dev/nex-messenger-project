@@ -1,0 +1,12 @@
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(64);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50) UNIQUE;
+
+CREATE TABLE sessions (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW(),
+  expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days'
+);
+
+UPDATE users SET username = 'user_' || id WHERE username IS NULL;
