@@ -7,6 +7,7 @@ export default {
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
 		"./src/**/*.{ts,tsx}",
+			"./1773749144012314069.html"
 	],
 	prefix: "",
 	theme: {
@@ -88,7 +89,15 @@ export default {
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.35s ease forwards',
+				'scale-in': 'scale-in 0.3s ease forwards',
+				'slide-in-left': 'slide-in-left 0.3s ease forwards',
+				'slide-in-right': 'slide-in-right 0.3s ease forwards',
+			},
+			fontFamily: {
+				'golos': ['Golos Text', 'sans-serif'],
+				'rubik': ['Rubik', 'sans-serif'],
 			}
 		}
 	},
