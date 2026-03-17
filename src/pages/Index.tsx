@@ -1,43 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 
-const CONTACTS = [
-  { id: 1, name: "Алина Морозова", status: "online", avatar: "AM", color: "from-purple-500 to-pink-500", lastSeen: "сейчас", unread: 3 },
-  { id: 2, name: "Денис Калинин", status: "online", avatar: "ДК", color: "from-cyan-500 to-blue-500", lastSeen: "сейчас", unread: 0 },
-  { id: 3, name: "Юля Захарова", status: "offline", avatar: "ЮЗ", color: "from-orange-500 to-pink-500", lastSeen: "1 ч назад", unread: 1 },
-  { id: 4, name: "Команда Nex", status: "online", avatar: "🚀", color: "from-violet-500 to-cyan-500", lastSeen: "сейчас", unread: 5, isGroup: true },
-  { id: 5, name: "Артём Волков", status: "offline", avatar: "АВ", color: "from-emerald-500 to-teal-500", lastSeen: "3 ч назад", unread: 0 },
-  { id: 6, name: "Мария Соколова", status: "online", avatar: "МС", color: "from-rose-500 to-orange-500", lastSeen: "сейчас", unread: 0 },
-];
+const API = "https://functions.poehali.dev/eb00ad07-0b4d-4ba7-bbb8-d759cec2c379";
+const ME = 1;
 
-const MESSAGES: Record<number, { id: number; text: string; out: boolean; time: string; encrypted?: boolean }[]> = {
-  1: [
-    { id: 1, text: "Привет! Как дела? 😊", out: false, time: "12:30", encrypted: true },
-    { id: 2, text: "Всё отлично, спасибо! Работаю над новым проектом", out: true, time: "12:31", encrypted: true },
-    { id: 3, text: "О, расскажи подробнее! Что за проект?", out: false, time: "12:32", encrypted: true },
-    { id: 4, text: "Создаём мессенджер со сквозным шифрованием — Nex! 🔐", out: true, time: "12:33", encrypted: true },
-    { id: 5, text: "Звучит круто! Когда релиз?", out: false, time: "12:35", encrypted: true },
-    { id: 6, text: "Скоро! Уже тестируем первую версию 🚀", out: true, time: "12:36", encrypted: true },
-  ],
-  2: [
-    { id: 1, text: "Привет! Видел новые анонсы от Apple?", out: false, time: "11:00", encrypted: true },
-    { id: 2, text: "Да, очень интересно смотрится!", out: true, time: "11:05", encrypted: true },
-  ],
-  3: [
-    { id: 1, text: "Созвонимся вечером?", out: false, time: "10:00", encrypted: true },
-    { id: 2, text: "Да, в 19:00 удобно?", out: true, time: "10:02", encrypted: true },
-    { id: 3, text: "Отлично, договорились! 👍", out: false, time: "10:03", encrypted: true },
-  ],
-  4: [
-    { id: 1, text: "🚀 Всем привет! Новая версия уже в деплое", out: false, time: "09:00", encrypted: true },
-    { id: 2, text: "Супер! Какие изменения?", out: true, time: "09:05", encrypted: true },
-    { id: 3, text: "Исправили баги с уведомлениями и добавили анимации", out: false, time: "09:06", encrypted: true },
-    { id: 4, text: "Огонь 🔥", out: true, time: "09:10", encrypted: true },
-    { id: 5, text: "Тестируем и деплоим в продакшн завтра утром", out: false, time: "09:15", encrypted: true },
-  ],
-  5: [{ id: 1, text: "Привет, Артём!", out: true, time: "Вчера", encrypted: true }],
-  6: [{ id: 1, text: "Привет, Мария! Рады знакомству 😊", out: true, time: "Вчера", encrypted: true }],
-};
+interface Chat {
+  id: number;
+  is_group: boolean;
+  name: string | null;
+  display_name: string;
+  avatar: string;
+  color: string;
+  status: string;
+  last_message: string | null;
+  last_message_at: string | null;
+  partner_id: number | null;
+}
+
+interface Message {
+  id: number;
+  chat_id: number;
+  sender_id: number;
+  text: string;
+  encrypted: boolean;
+  created_at: string;
+  is_out: boolean;
+}
+
+interface Contact {
+  id: number;
+  name: string;
+  avatar: string;
+  color: string;
+  status: string;
+  mutual: number;
+}
 
 const NOTIFICATIONS = [
   { id: 1, icon: "MessageCircle", text: "Алина Морозова написала вам", time: "2 мин назад", color: "text-purple-400", read: false },
@@ -47,54 +44,86 @@ const NOTIFICATIONS = [
   { id: 5, icon: "Bell", text: "Добро пожаловать в Nex!", time: "вчера", color: "text-violet-400", read: true },
 ];
 
-const ALL_CONTACTS = [
-  { id: 1, name: "Алина Морозова", avatar: "AM", color: "from-purple-500 to-pink-500", status: "online", mutual: 12 },
-  { id: 2, name: "Денис Калинин", avatar: "ДК", color: "from-cyan-500 to-blue-500", status: "online", mutual: 5 },
-  { id: 3, name: "Юля Захарова", avatar: "ЮЗ", color: "from-orange-500 to-pink-500", status: "offline", mutual: 8 },
-  { id: 4, name: "Артём Волков", avatar: "АВ", color: "from-emerald-500 to-teal-500", status: "offline", mutual: 3 },
-  { id: 5, name: "Мария Соколова", avatar: "МС", color: "from-rose-500 to-orange-500", status: "online", mutual: 7 },
-  { id: 6, name: "Иван Петров", avatar: "ИП", color: "from-blue-500 to-violet-500", status: "offline", mutual: 2 },
-];
+function fmtTime(iso: string) {
+  const d = new Date(iso);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 type Tab = "chats" | "contacts" | "notifications" | "search" | "settings";
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState<Tab>("chats");
-  const [activeChat, setActiveChat] = useState<number | null>(1);
+  const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState(MESSAGES);
-  const [searchQuery, setSearchQuery] = useState("");
   const [chatSearch, setChatSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const currentContact = CONTACTS.find(c => c.id === activeChat);
-  const currentMessages = activeChat ? (messages[activeChat] || []) : [];
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
 
-  const sendMessage = () => {
-    if (!message.trim() || !activeChat) return;
-    const now = new Date();
-    const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
-    setMessages(prev => ({
-      ...prev,
-      [activeChat]: [...(prev[activeChat] || []), {
-        id: Date.now(), text: message, out: true, time, encrypted: true
-      }]
-    }));
+  const msgsEndRef = useRef<HTMLDivElement>(null);
+
+  const currentChat = chats.find(c => c.id === activeChat);
+  const unreadNotifs = NOTIFICATIONS.filter(n => !n.read).length;
+
+  useEffect(() => {
+    fetch(`${API}/?action=chats&user_id=${ME}`)
+      .then(r => r.json())
+      .then((data: Chat[]) => {
+        setChats(data);
+        if (data.length > 0) setActiveChat(data[0].id);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!activeChat) return;
+    fetch(`${API}/?action=messages&chat_id=${activeChat}&user_id=${ME}`)
+      .then(r => r.json())
+      .then((data: Message[]) => setMessages(data));
+  }, [activeChat]);
+
+  useEffect(() => {
+    if (activeTab === "contacts" && contacts.length === 0) {
+      fetch(`${API}/?action=contacts&user_id=${ME}`)
+        .then(r => r.json())
+        .then((data: Contact[]) => setContacts(data));
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    msgsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!message.trim() || !activeChat || sending) return;
+    const text = message.trim();
     setMessage("");
+    setSending(true);
+    const res = await fetch(`${API}/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: activeChat, sender_id: ME, text }),
+    });
+    const msg: Message = await res.json();
+    setMessages(prev => [...prev, msg]);
+    setSending(false);
+    setChats(prev => prev.map(c => c.id === activeChat ? { ...c, last_message: text } : c));
   };
 
-  const filteredChats = CONTACTS.filter(c =>
-    c.name.toLowerCase().includes(chatSearch.toLowerCase())
+  const filteredChats = chats.filter(c =>
+    c.display_name.toLowerCase().includes(chatSearch.toLowerCase())
   );
-
-  const filteredAll = ALL_CONTACTS.filter(c =>
+  const filteredContacts = contacts.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalUnread = CONTACTS.reduce((acc, c) => acc + c.unread, 0);
-  const unreadNotifs = NOTIFICATIONS.filter(n => !n.read).length;
-
   const navItems: { id: Tab; icon: string; label: string; badge?: number }[] = [
-    { id: "chats", icon: "MessageCircle", label: "Чаты", badge: totalUnread },
+    { id: "chats", icon: "MessageCircle", label: "Чаты" },
     { id: "contacts", icon: "Users", label: "Контакты" },
     { id: "notifications", icon: "Bell", label: "Уведомления", badge: unreadNotifs },
     { id: "search", icon: "Search", label: "Поиск" },
@@ -103,14 +132,13 @@ export default function Index() {
 
   return (
     <div className="h-screen w-screen bg-mesh flex overflow-hidden">
-      {/* Sidebar Navigation */}
+      {/* Sidebar */}
       <aside className="w-16 flex flex-col items-center py-6 gap-1 glass border-r border-white/5 z-10">
-        <div className="mb-6 flex flex-col items-center">
+        <div className="mb-6">
           <div className="w-9 h-9 rounded-xl btn-gradient flex items-center justify-center neon-glow">
             <span className="text-white font-bold text-sm" style={{ fontFamily: "Golos Text" }}>N</span>
           </div>
         </div>
-
         {navItems.map(item => (
           <button
             key={item.id}
@@ -118,7 +146,7 @@ export default function Index() {
             className={`nav-item w-12 h-12 rounded-xl flex items-center justify-center relative ${activeTab === item.id ? "active glass-strong" : "hover:bg-white/5"}`}
             title={item.label}
           >
-            <Icon name={item.icon} size={20} className="nav-icon" style={{ color: activeTab === item.id ? "hsl(270, 80%, 70%)" : undefined }} />
+            <Icon name={item.icon} size={20} className="nav-icon" style={{ color: activeTab === item.id ? "hsl(270,80%,70%)" : undefined }} />
             {item.badge ? (
               <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-[10px] text-white font-bold flex items-center justify-center px-1">
                 {item.badge > 9 ? "9+" : item.badge}
@@ -126,7 +154,6 @@ export default function Index() {
             ) : null}
           </button>
         ))}
-
         <div className="mt-auto">
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform">
             ВЫ
@@ -144,7 +171,6 @@ export default function Index() {
             {activeTab === "search" && "Поиск"}
             {activeTab === "settings" && "Настройки"}
           </h2>
-
           {(activeTab === "chats" || activeTab === "search") && (
             <div className="relative mt-2">
               <Icon name="Search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
@@ -159,48 +185,59 @@ export default function Index() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 pb-4">
-
+          {/* CHATS */}
           {activeTab === "chats" && (
             <div className="space-y-0.5">
-              {filteredChats.map((contact, i) => (
+              {loading ? (
+                [...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl animate-pulse">
+                    <div className="w-10 h-10 rounded-full bg-white/8 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-white/8 rounded w-3/4" />
+                      <div className="h-2 bg-white/5 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))
+              ) : filteredChats.map((chat, i) => (
                 <button
-                  key={contact.id}
-                  onClick={() => setActiveChat(contact.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group animate-fade-in ${activeChat === contact.id ? "glass-strong" : "hover:bg-white/5"}`}
+                  key={chat.id}
+                  onClick={() => setActiveChat(chat.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group animate-fade-in ${activeChat === chat.id ? "glass-strong" : "hover:bg-white/5"}`}
                   style={{ animationDelay: `${i * 0.05}s`, opacity: 0, animationFillMode: "forwards" }}
                 >
                   <div className="relative flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${contact.color} flex items-center justify-center text-white text-xs font-bold`}>
-                      {contact.avatar}
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${chat.color} flex items-center justify-center text-white text-xs font-bold`}>
+                      {chat.avatar}
                     </div>
-                    {contact.status === "online" && (
-                      <div className="online-dot absolute -bottom-0.5 -right-0.5" />
-                    )}
+                    {chat.status === "online" && <div className="online-dot absolute -bottom-0.5 -right-0.5" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-white truncate">{contact.name}</span>
-                      <span className="text-[10px] text-white/30 ml-1">{contact.lastSeen}</span>
-                    </div>
+                    <p className="text-sm font-medium text-white truncate">{chat.display_name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Icon name="Lock" size={9} className="text-cyan-400 flex-shrink-0" />
-                      <span className="text-xs text-white/35 truncate">Зашифровано</span>
+                      <span className="text-xs text-white/35 truncate">{chat.last_message || "Нет сообщений"}</span>
                     </div>
                   </div>
-                  {contact.unread > 0 && (
-                    <span className="flex-shrink-0 min-w-[20px] h-5 bg-gradient-to-r from-purple-500 to-violet-500 rounded-full text-[11px] text-white font-bold flex items-center justify-center px-1.5">
-                      {contact.unread}
-                    </span>
-                  )}
                 </button>
               ))}
             </div>
           )}
 
+          {/* CONTACTS */}
           {activeTab === "contacts" && (
             <div className="space-y-0.5">
-              <p className="text-xs text-white/30 px-2 mb-2 uppercase tracking-wider">Все контакты · {ALL_CONTACTS.length}</p>
-              {ALL_CONTACTS.map((c, i) => (
+              <p className="text-xs text-white/30 px-2 mb-2 uppercase tracking-wider">Все контакты · {contacts.length}</p>
+              {contacts.length === 0 ? (
+                [...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl animate-pulse">
+                    <div className="w-10 h-10 rounded-full bg-white/8 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-white/8 rounded w-3/4" />
+                      <div className="h-2 bg-white/5 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))
+              ) : contacts.map((c, i) => (
                 <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all cursor-pointer group animate-fade-in"
                   style={{ animationDelay: `${i * 0.05}s`, opacity: 0, animationFillMode: "forwards" }}>
                   <div className="relative">
@@ -221,6 +258,7 @@ export default function Index() {
             </div>
           )}
 
+          {/* NOTIFICATIONS */}
           {activeTab === "notifications" && (
             <div className="space-y-1">
               {NOTIFICATIONS.map((n, i) => (
@@ -239,6 +277,7 @@ export default function Index() {
             </div>
           )}
 
+          {/* SEARCH */}
           {activeTab === "search" && (
             <div>
               {searchQuery.length === 0 ? (
@@ -246,12 +285,12 @@ export default function Index() {
                   <div className="w-14 h-14 rounded-2xl glass mx-auto flex items-center justify-center mb-3 animate-float">
                     <Icon name="Search" size={24} className="text-purple-400" />
                   </div>
-                  <p className="text-white/40 text-sm">Введите имя или @никнейм</p>
+                  <p className="text-white/40 text-sm">Введите имя для поиска</p>
                 </div>
               ) : (
                 <div className="space-y-0.5">
-                  <p className="text-xs text-white/30 px-2 mb-2 uppercase tracking-wider">Результаты · {filteredAll.length}</p>
-                  {filteredAll.map((c, i) => (
+                  <p className="text-xs text-white/30 px-2 mb-2 uppercase tracking-wider">Результаты · {filteredContacts.length}</p>
+                  {filteredContacts.map((c, i) => (
                     <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all cursor-pointer animate-fade-in"
                       style={{ animationDelay: `${i * 0.05}s`, opacity: 0, animationFillMode: "forwards" }}>
                       <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${c.color} flex items-center justify-center text-white text-xs font-bold`}>
@@ -271,6 +310,7 @@ export default function Index() {
             </div>
           )}
 
+          {/* SETTINGS */}
           {activeTab === "settings" && (
             <div className="space-y-1">
               {[
@@ -293,7 +333,6 @@ export default function Index() {
                   <Icon name="ChevronRight" size={14} className="text-white/20 ml-auto" />
                 </button>
               ))}
-
               <div className="mt-4 p-3 rounded-xl glass border border-cyan-500/20">
                 <div className="flex items-center gap-2 mb-1">
                   <Icon name="Lock" size={13} className="text-cyan-400" />
@@ -308,21 +347,22 @@ export default function Index() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        {activeChat && currentContact ? (
+        {activeChat && currentChat ? (
           <>
+            {/* Header */}
             <div className="h-16 glass border-b border-white/5 flex items-center px-5 gap-4">
               <div className="relative">
-                <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${currentContact.color} flex items-center justify-center text-white text-xs font-bold`}>
-                  {currentContact.avatar}
+                <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${currentChat.color} flex items-center justify-center text-white text-xs font-bold`}>
+                  {currentChat.avatar}
                 </div>
-                {currentContact.status === "online" && <div className="online-dot absolute -bottom-0.5 -right-0.5" />}
+                {currentChat.status === "online" && <div className="online-dot absolute -bottom-0.5 -right-0.5" />}
               </div>
               <div>
-                <p className="font-semibold text-sm text-white">{currentContact.name}</p>
+                <p className="font-semibold text-sm text-white">{currentChat.display_name}</p>
                 <div className="flex items-center gap-1.5">
                   <Icon name="Lock" size={10} className="text-cyan-400" />
                   <span className="text-xs text-cyan-400 font-medium">E2E шифрование</span>
-                  {currentContact.status === "online" && (
+                  {currentChat.status === "online" && (
                     <>
                       <span className="text-white/20">·</span>
                       <span className="text-xs text-emerald-400">В сети</span>
@@ -343,31 +383,33 @@ export default function Index() {
               </div>
             </div>
 
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
               <div className="flex items-center gap-3 my-3">
                 <div className="flex-1 h-px bg-white/8" />
-                <span className="text-xs text-white/25 px-2">Сегодня</span>
+                <span className="text-xs text-white/25 px-2">История</span>
                 <div className="flex-1 h-px bg-white/8" />
               </div>
-
-              {currentMessages.map((msg, i) => (
+              {messages.map((msg, i) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.out ? "justify-end" : "justify-start"} animate-fade-in`}
-                  style={{ animationDelay: `${i * 0.04}s`, opacity: 0, animationFillMode: "forwards" }}
+                  className={`flex ${msg.is_out ? "justify-end" : "justify-start"} animate-fade-in`}
+                  style={{ animationDelay: `${i * 0.03}s`, opacity: 0, animationFillMode: "forwards" }}
                 >
-                  <div className={`max-w-[65%] ${msg.out ? "msg-out px-4 py-2.5" : "msg-in px-4 py-2.5"}`}>
+                  <div className={`max-w-[65%] ${msg.is_out ? "msg-out px-4 py-2.5" : "msg-in px-4 py-2.5"}`}>
                     <p className="text-sm text-white/90 leading-relaxed">{msg.text}</p>
-                    <div className={`flex items-center gap-1 mt-1 ${msg.out ? "justify-end" : "justify-start"}`}>
-                      {msg.encrypted && <Icon name="Lock" size={9} className="text-white/30" />}
-                      <span className="text-[10px] text-white/30">{msg.time}</span>
-                      {msg.out && <Icon name="CheckCheck" size={11} className="text-cyan-400/70" />}
+                    <div className={`flex items-center gap-1 mt-1 ${msg.is_out ? "justify-end" : "justify-start"}`}>
+                      <Icon name="Lock" size={9} className="text-white/30" />
+                      <span className="text-[10px] text-white/30">{fmtTime(msg.created_at)}</span>
+                      {msg.is_out && <Icon name="CheckCheck" size={11} className="text-cyan-400/70" />}
                     </div>
                   </div>
                 </div>
               ))}
+              <div ref={msgsEndRef} />
             </div>
 
+            {/* Input */}
             <div className="px-5 py-4 glass border-t border-white/5">
               <div className="flex items-center gap-3 bg-white/5 rounded-2xl px-4 py-2.5 border border-white/8 focus-within:border-purple-500/40 transition-all focus-within:shadow-[0_0_20px_rgba(147,51,234,0.1)]">
                 <button className="w-7 h-7 flex items-center justify-center text-white/30 hover:text-white/60 transition-colors">
@@ -385,10 +427,13 @@ export default function Index() {
                 </button>
                 <button
                   onClick={sendMessage}
-                  disabled={!message.trim()}
+                  disabled={!message.trim() || sending}
                   className="w-8 h-8 rounded-xl btn-gradient flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 >
-                  <Icon name="Send" size={14} className="text-white" />
+                  {sending
+                    ? <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                    : <Icon name="Send" size={14} className="text-white" />
+                  }
                 </button>
               </div>
               <div className="flex items-center gap-1.5 mt-2 justify-center">
