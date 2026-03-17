@@ -27,7 +27,9 @@ COLORS = [
 ]
 
 def get_conn():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
+    dsn = os.environ["DATABASE_URL"]
+    schema = os.environ.get("MAIN_DB_SCHEMA", "public")
+    return psycopg2.connect(dsn, options=f"-c search_path={schema}")
 
 def resp(data, status=200):
     return {
@@ -121,8 +123,8 @@ def handler(event: dict, context) -> dict:
                 token = secrets.token_hex(32)
                 token_expires = datetime.now() + timedelta(days=30)
                 cur.execute(
-                    "INSERT INTO sessions (user_id, token, expires_at) VALUES (%s, %s, %s)",
-                    (user["id"], token, token_expires)
+                    "INSERT INTO sessions (id, user_id, expires_at) VALUES (%s, %s, %s)",
+                    (token, user["id"], token_expires)
                 )
             conn.commit()
 
@@ -148,7 +150,7 @@ def handler(event: dict, context) -> dict:
                 cur.execute(
                     """SELECT u.id, u.name, u.avatar, u.color, u.phone, u.status
                        FROM sessions s JOIN users u ON u.id = s.user_id
-                       WHERE s.token = %s AND s.expires_at > NOW()""",
+                       WHERE s.id = %s AND s.expires_at > NOW()""",
                     (token,)
                 )
                 user = cur.fetchone()
@@ -163,11 +165,11 @@ def handler(event: dict, context) -> dict:
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        "UPDATE sessions SET expires_at=NOW() WHERE token=%s", (token,)
+                        "UPDATE sessions SET expires_at=NOW() WHERE id=%s", (token,)
                     )
                     cur.execute(
                         """UPDATE users SET status='offline'
-                           WHERE id = (SELECT user_id FROM sessions WHERE token=%s)""",
+                           WHERE id = (SELECT user_id FROM sessions WHERE id=%s)""",
                         (token,)
                     )
                 conn.commit()

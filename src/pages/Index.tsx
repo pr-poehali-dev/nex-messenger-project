@@ -48,17 +48,17 @@ function fmtTime(iso: string) {
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-interface User {
+interface AppUser {
   id: number;
   name: string;
-  username: string;
   avatar: string;
   color: string;
+  phone?: string;
 }
 
 interface IndexProps {
-  user: User;
-  sessionId: string;
+  user: AppUser;
+  token: string;
   onLogout: () => void;
 }
 

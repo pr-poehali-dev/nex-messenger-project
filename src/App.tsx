@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -10,48 +9,67 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
-const AUTH_URL = "https://functions.poehali.dev/f2538387-3854-4fd9-9797-76f064a160ca";
+const AUTH_API = "https://functions.poehali.dev/f2538387-3854-4fd9-9797-76f064a160ca";
 
-interface User {
+export interface AppUser {
   id: number;
   name: string;
-  username: string;
   avatar: string;
   color: string;
+  phone: string;
 }
 
 function AppRoot() {
-  const [user, setUser] = useState<User | null>(null);
-  const [sessionId, setSessionId] = useState<string>("");
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [token, setToken] = useState<string>("");
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const sid = localStorage.getItem("nex_session");
-    if (!sid) { setChecking(false); return; }
-    fetch(`${AUTH_URL}/?action=me&session_id=${sid}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.user) { setUser(data.user); setSessionId(sid); }
-        else localStorage.removeItem("nex_session");
+    const savedToken = localStorage.getItem("nex_token");
+    const savedUser = localStorage.getItem("nex_user");
+    if (savedToken && savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+        setToken(savedToken);
+        setChecking(false);
+        return;
+      } catch { /* ignore */ }
+    }
+    if (savedToken) {
+      fetch(AUTH_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "me", token: savedToken }),
       })
-      .catch(() => {})
-      .finally(() => setChecking(false));
+        .then(r => r.json())
+        .then(data => {
+          if (data.user) { setUser(data.user); setToken(savedToken); }
+          else { localStorage.removeItem("nex_token"); localStorage.removeItem("nex_user"); }
+        })
+        .catch(() => {})
+        .finally(() => setChecking(false));
+    } else {
+      setChecking(false);
+    }
   }, []);
 
-  const handleAuth = (u: User, sid: string) => {
+  const handleAuth = (u: AppUser, t: string) => {
     setUser(u);
-    setSessionId(sid);
+    setToken(t);
   };
 
   const handleLogout = async () => {
-    await fetch(`${AUTH_URL}/?action=logout`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId }),
-    }).catch(() => {});
-    localStorage.removeItem("nex_session");
+    if (token) {
+      fetch(AUTH_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout", token }),
+      }).catch(() => {});
+    }
+    localStorage.removeItem("nex_token");
+    localStorage.removeItem("nex_user");
     setUser(null);
-    setSessionId("");
+    setToken("");
   };
 
   if (checking) {
@@ -72,7 +90,7 @@ function AppRoot() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index user={user} sessionId={sessionId} onLogout={handleLogout} />} />
+        <Route path="/" element={<Index user={user} token={token} onLogout={handleLogout} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

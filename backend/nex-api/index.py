@@ -14,7 +14,9 @@ CORS = {
 }
 
 def get_conn():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
+    dsn = os.environ["DATABASE_URL"]
+    schema = os.environ.get("MAIN_DB_SCHEMA", "public")
+    return psycopg2.connect(dsn, options=f"-c search_path={schema}")
 
 def resp(data, status=200):
     return {"statusCode": status, "headers": {**CORS, "Content-Type": "application/json"}, "body": json.dumps(data, ensure_ascii=False, default=str)}
